@@ -4,109 +4,84 @@ import streamlit_mermaid as st_mermaid
 from PyPDF2 import PdfReader
 import re
 
-# --- CONFIGURACIÓN DE SEGURIDAD ---
+# --- SEGURIDAD ---
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
 except Exception:
-    st.error("⚠️ Configura la API KEY en los Secrets.")
+    st.error("⚠️ Error: Configura la API KEY en los Secrets.")
     st.stop()
 
-# --- INTERFAZ ESTILO AI STUDIO ---
-st.set_page_config(page_title="WrAp It Pro - Studio", layout="wide")
+# --- CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="WrAp It", page_icon="🧠", layout="wide")
 
-# CSS para imitar la interfaz limpia de Google AI Studio
+# CSS PARA ESTILO ELITE (MÁXIMA LIMPIEZA)
 st.markdown("""
 <style>
-    /* Fondo y tipografía */
+    .block-container { padding-top: 1.5rem; max-width: 95% !important; }
     .stApp { background-color: #FFFFFF; }
-    .css-1d391kg { background-color: #F8F9FA; border-right: 1px solid #E0E0E0; }
+    [data-testid="stSidebar"] { background-color: #F8F9FA; border-right: 1px solid #E5E7EB; width: 320px !important; }
     
-    /* Títulos estilo Studio */
-    .studio-title { font-family: 'Google Sans', Arial; color: #1A73E8; font-size: 24px; font-weight: 500; margin-bottom: 20px; }
+    /* Contenedor del Logo */
+    .logo-container { text-align: center; margin-bottom: 2rem; }
     
-    /* Botones y selectores */
-    .stButton>button { border-radius: 4px; background-color: #1A73E8; color: white; border: none; font-weight: 500; }
-    .stButton>button:hover { background-color: #1765C1; border: none; }
-    
-    /* Área de respuesta */
-    .output-container { background-color: #F1F3F4; padding: 20px; border-radius: 8px; border: 1px solid #DADCE0; }
+    /* Botones de Navegación */
+    .stRadio > div { gap: 10px; }
+    .stRadio label { 
+        background-color: #FFFFFF; border: 1px solid #E5E7EB; padding: 12px 15px; 
+        border-radius: 8px; width: 100%; transition: 0.2s; font-weight: 500;
+    }
+    .stRadio label:hover { border-color: #1A73E8; background-color: #F1F7FE; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR (PANEL DE CONFIGURACIÓN IZQUIERDO) ---
+# --- SIDEBAR CON LOGO OFICIAL ---
 with st.sidebar:
-    st.markdown("<div class='studio-title'>🛡️📊 WrAp It Pro</div>", unsafe_allow_html=True)
-    st.markdown("---")
+    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
+    # Jalamos la imagen directamente de tu GitHub
+    st.image("https://raw.githubusercontent.com/Bcst16/Wrap-it-web/main/logo_final.png", width=250)
+    st.markdown("</div>", unsafe_allow_html=True)
     
-    st.subheader("Configuración")
-    model_choice = st.selectbox("Modelo", ["gemini-1.5-flash", "gemini-1.5-pro"])
-    
-    st.subheader("Instrucciones del Sistema")
-    sys_prompt = st.text_area("System Instructions", 
-        value="Eres un consultor experto. Analiza el PDF y genera diagramas Mermaid (graph LR o mindmap) y resúmenes ejecutivos.",
-        height=150)
+    st.markdown("### Herramientas")
+    tool = st.radio("Acción:", ["📊 Dashboard", "📝 Resumen", "📍 Key Points", "🐟 Ishikawa", "🧠 M. Conceptual"], label_visibility="collapsed")
     
     st.markdown("---")
-    uploaded_file = st.file_uploader("Documento Actual (PDF)", type="pdf")
+    uploaded_file = st.file_uploader("Documento PDF", type="pdf")
     
     if uploaded_file:
         if 'pdf_text' not in st.session_state:
             reader = PdfReader(uploaded_file)
             st.session_state.pdf_text = "".join([p.extract_text() or "" for p in reader.pages])
-        st.success("✅ Archivo cargado")
+        st.success("✅ Sistema Listo")
 
-# --- ÁREA PRINCIPAL (WORKSPACE) ---
+# --- ÁREA DE TRABAJO ---
 if not uploaded_file:
-    st.markdown("""
-    <div style='text-align: center; padding-top: 100px;'>
-        <h2 style='color: #5F6368;'>Bienvenido a WrAp It Studio</h2>
-        <p style='color: #80868B;'>Sube un PDF en el panel izquierdo para comenzar el análisis.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center; margin-top:120px;'><h2 style='color:#9CA3AF;'>Bienvenido. Sube un PDF para inicializar WrAp It.</h2></div>", unsafe_allow_html=True)
 else:
-    # Menú de herramientas estilo Pestañas de Studio
-    tool = st.radio("Herramienta de Análisis", 
-                    ["Resumen Ejecutivo", "Key Points", "Diagrama Ishikawa", "Mapa Conceptual", "Chat Consultor"],
-                    horizontal=True)
+    st.markdown(f"## {tool}")
+    col_in, col_out = st.columns([1, 1], gap="large")
     
-    st.markdown("---")
-    
-    col_input, col_output = st.columns([1, 1.5])
-    
-    with col_input:
-        st.markdown("**Prompt / Consulta**")
-        if tool == "Chat Consultor":
-            user_input = st.text_area("Pregunta algo sobre el documento...", height=200)
-        else:
-            user_input = st.text_area("Instrucciones adicionales (opcional)", 
-                                    placeholder=f"Generando {tool} basado en el PDF...", height=200)
+    with col_in:
+        st.markdown("**Configuración del Análisis**")
+        user_input = st.text_area("Instrucciones adicionales:", height=150, placeholder="Ej: Enfócate en los objetivos estratégicos...")
+        run_btn = st.button("EJECUTAR PROCESO", type="primary")
         
-        run_btn = st.button("Ejecutar (Run)", type="primary")
-
-    with col_output:
-        st.markdown("**Resultado / Visualización**")
+    with col_out:
+        st.markdown("**Resultado e Inteligencia**")
         if run_btn:
-            with st.spinner("Procesando..."):
-                # Lógica de prompts según herramienta
+            with st.spinner("Procesando con Gemini 1.5..."):
                 prompts = {
-                    "Resumen Ejecutivo": "Haz un resumen ejecutivo profesional de este texto: ",
-                    "Key Points": "Extrae los puntos clave más importantes de: ",
-                    "Diagrama Ishikawa": "Genera un diagrama de Ishikawa en formato mermaid graph LR de: ",
-                    "Mapa Conceptual": "Genera un mapa conceptual en formato mermaid mindmap de: ",
-                    "Chat Consultor": f"{user_input}. Basado en: "
+                    "📊 Dashboard": "Resumen ejecutivo y mapa mental de: ",
+                    "📝 Resumen": "Resumen ejecutivo de alta gerencia de: ",
+                    "📍 Key Points": "Hallazgos clave de: ",
+                    "🐟 Ishikawa": "Diagrama Ishikawa (causa-raíz) en mermaid graph LR de: ",
+                    "🧠 M. Conceptual": "Mapa conceptual en mermaid mindmap de: "
                 }
+                model = genai.GenerativeModel("gemini-1.5-flash")
+                response = model.generate_content(prompts[tool] + st.session_state.pdf_text[:9000])
                 
-                final_prompt = prompts[tool] + st.session_state.pdf_text[:8000]
-                
-                model = genai.GenerativeModel(model_name=model_choice, system_instruction=sys_prompt)
-                response = model.generate_content(final_prompt)
-                
-                # Mostrar texto
-                st.markdown(f"<div class='output-container'>{response.text}</div>", unsafe_allow_html=True)
-                
-                # Renderizar Mermaid si existe
+                st.write(response.text)
                 m_code = re.search(r"```mermaid\s+(.*?)\s+```", response.text, re.DOTALL)
                 if m_code:
                     st.markdown("---")
-                    st_mermaid.st_mermaid(m_code.group(1), height="500px")
+                    st_mermaid.st_mermaid(m_code.group(1), height="550px")
